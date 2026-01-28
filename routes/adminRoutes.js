@@ -2,26 +2,25 @@ import express from "express";
 import {
   adminSignup,
   adminLogin,
-  addRestaurants,
-  getRestaurants,
-  updateRestaurants,
-  deleteRestaurants,
+  addStores,
+  getStores,
+  updateStores,
+  deleteStores,
   addFoodItems,
   getFoodItems,
   updateFoodItems,
   deleteFoodItems,
-  
+
 } from "../controller/adminController.js";
-import protect from "../middleWare/userMiddleWare.js";
+import upload from "../config/multer.js";
+
 const app = express.Router();
 
 app.route("/").post(adminSignup);
 app.route("/login").post(adminLogin);
-app.route("/restaurants").post(addRestaurants).get(getRestaurants);
-app.route("/restaurants/:id").put(updateRestaurants).delete(deleteRestaurants);
-app.route("/food").post(addFoodItems).get(getFoodItems);
-app.route("/food/:id").put(updateFoodItems).delete(deleteFoodItems);
-
-
+app.route("/stores").post(upload.single('image'), addStores).get(getStores);
+app.route("/stores/:id").put(upload.single('image'), updateStores).delete(deleteStores);
+app.route("/food").post(upload.single('image'), addFoodItems).get(getFoodItems);
+app.route("/food/:id").put(upload.single('image'), updateFoodItems).delete(deleteFoodItems);
 
 export default app;

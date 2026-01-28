@@ -8,7 +8,7 @@ const likeSchema = new mongoose.Schema({
     },
     foodId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",      
+        ref: "Product",
         required: true,
     },
     likedAt: {

@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
-const restaurantSchema = new mongoose.Schema({
-  restaurantsName: {
+const storeSchema = new mongoose.Schema({
+  storeName: {
     type: String,
     required: true,
   },
@@ -35,7 +36,13 @@ const restaurantSchema = new mongoose.Schema({
     },
     email: {
       type: String,
+      required: true,
+      unique: true,
     },
+  },
+  password: {
+    type: String,
+    required: true,
   },
   cuisine: [
     {
@@ -68,5 +75,17 @@ const restaurantSchema = new mongoose.Schema({
   },
 });
 
-const Restaurant = mongoose.model("Restaurant", restaurantSchema);
-export default Restaurant;
+storeSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
+    next();
+  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+storeSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+const Store = mongoose.model("Store", storeSchema);
+export default Store;

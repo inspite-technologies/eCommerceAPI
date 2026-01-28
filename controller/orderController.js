@@ -25,8 +25,8 @@ const createOrder = async (req, res) => {
     }).populate({
       path: "foodId",
       populate: {
-        path: "restaurantId",
-        select: "_id restaurantsName",
+        path: "storeId",
+        select: "_id storeName",
       },
     });
 
@@ -54,8 +54,8 @@ const createOrder = async (req, res) => {
         amount: cartItem.foodId.price * cartItem.quantity,
         razorpayOrderId: razorpayOrder.id,
         paymentStatus: "Pending",
-        restaurantId: cartItem.foodId.restaurantId._id,
-        restaurantName: cartItem.foodId.restaurantId.restaurantsName,
+        storeId: cartItem.foodId.storeId._id,
+        storeName: cartItem.foodId.storeId.storeName,
       });
 
       createdOrders.push(newOrder);
@@ -84,7 +84,7 @@ const createOrder = async (req, res) => {
 const handlePaymentFailure = async (req, res) => {
   try {
     const { razorpay_order_id, error } = req.body;
-    
+
     const order = await Order.findOne({
       razorpayOrderId: razorpay_order_id
     });
@@ -171,7 +171,7 @@ const verifyPayment = async (req, res) => {
     }
   } catch (error) {
     console.error("Verification error:", error);
-    
+
     // If error occurs, try to mark order as failed
     if (req.body.razorpay_order_id) {
       await Order.findOneAndUpdate(
@@ -213,10 +213,10 @@ const getOrders = async (req, res) => {
         select: "quantity foodId",
         populate: {
           path: "foodId",
-          select: "name price image restaurantId",
+          select: "name price image storeId",
           populate: {
-            path: "restaurantId",
-            select: "restaurantsName",
+            path: "storeId",
+            select: "storeName",
           },
         },
       })
@@ -226,7 +226,7 @@ const getOrders = async (req, res) => {
     const cleanedOrders = orderDetails.map(order => {
       const originalCount = order.cartIds?.length || 0;
       const validCartIds = order.cartIds?.filter(item => item !== null) || [];
-      
+
       if (originalCount !== validCartIds.length) {
         console.log(`Order ${order._id}: ${originalCount - validCartIds.length} cart items were deleted`);
       }
@@ -285,10 +285,10 @@ const getAllOrders = async (req, res) => {
         select: "quantity foodId",
         populate: {
           path: "foodId",
-          select: "name price image restaurantId",
+          select: "name price image storeId",
           populate: {
-            path: "restaurantId",
-            select: "restaurantsName",
+            path: "storeId",
+            select: "storeName",
           },
         },
       });

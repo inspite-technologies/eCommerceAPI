@@ -29,16 +29,16 @@ const addLike = async (req, res) => {
 
 const fetchLikes = async (req, res) => {
   try {
-    
-    const userId = req.user._id; 
+
+    const userId = req.user._id;
 
     const userLikes = await Likes.find({ userId: userId }) // no need for `new ObjectId(...)`
       .populate({
         path: "foodId",
         select: "name price image isAvailable category",
         populate: {
-          path: "restaurantId",
-          select: "restaurantsName",
+          path: "storeId",
+          select: "storeName",
         },
       })
       .lean();

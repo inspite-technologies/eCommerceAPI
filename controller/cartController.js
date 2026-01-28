@@ -36,10 +36,10 @@ const syncCart = async (req, res) => {
     const updatedCart = await Cart.find({ userId })
       .populate({
         path: "foodId",
-        select: "name price image restaurantId",
+        select: "name price image storeId",
         populate: {
-          path: "restaurantId",
-          select: "restaurantsName",
+          path: "storeId",
+          select: "storeName",
         },
       })
       .lean();
@@ -157,10 +157,10 @@ const getCartItems = async (req, res) => {
     const cartItems = await Cart.find({ userId })
       .populate({
         path: "foodId",
-        select: "name price image restaurantId",
+        select: "name price image storeId",
         populate: {
-          path: "restaurantId",
-          select: "restaurantsName",
+          path: "storeId",
+          select: "storeName",
         },
       })
       .lean();
@@ -204,12 +204,12 @@ const getCartItems = async (req, res) => {
 
 const updateCartItem = async (req, res) => {
   try {
-    const cartId = req.params.id; 
+    const cartId = req.params.id;
     const { quantity } = req.body;
 
     if (quantity <= 0) {
       const deletedItem = await Cart.findByIdAndDelete(cartId);
-      
+
       if (!deletedItem) {
         return res.status(404).json({ msg: "Cart item not found to delete" });
       }
@@ -223,7 +223,7 @@ const updateCartItem = async (req, res) => {
       const updatedCartItem = await Cart.findByIdAndUpdate(
         cartId,
         { quantity: quantity },
-        { new: true } 
+        { new: true }
       );
 
       if (!updatedCartItem) {

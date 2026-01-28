@@ -1,12 +1,19 @@
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
+  storeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Store",
+  },
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Restaurant",
+    ref: "Store",
+  },
+  productName: {
+    type: String,
     required: true,
   },
-  name: {
+  category: {
     type: String,
     required: true,
   },
@@ -17,23 +24,14 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  image: {
-    type: String,
+  quantity: {
+    type: Number,
     required: true,
   },
-  category: {
+  images: [{
     type: String,
-    enum: [
-      "Biriyani",
-      "Drinks",
-      "Dessert",
-      "Main Course",
-      "Appetizers",
-      "Salads",
-      "Soups",
-      "Snacks",
-    ],
-  },
+    required: true,
+  }],
   isAvailable: {
     type: Boolean,
     default: true,

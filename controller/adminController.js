@@ -1,5 +1,5 @@
 import Admin from "../modals/adminSchema.js";
-import Restaurant from "../modals/restaurantSchema.js";
+import Store from "../modals/storeSchema.js";
 import Product from "../modals/productSchema.js";
 import generateToken from "../utils/generateToken.js";
 import bcrypt from "bcryptjs";
@@ -24,7 +24,8 @@ const adminSignup = async (req, res) => {
     }
   } catch (err) {
     res.status(400).json({
-      err,
+      error: "Error during signup",
+      details: err.message || err,
     });
   }
 };
@@ -58,82 +59,105 @@ const adminLogin = async (req, res) => {
 
 
 
-const addRestaurants = async (req, res) => {
-  const { restaurantsName } = req.body;
+const addStores = async (req, res) => {
+  const { storeName } = req.body;
   try {
-    const existRestaurant = await Restaurant.findOne({ restaurantsName });
-    if (existRestaurant) {
+    const existStore = await Store.findOne({ storeName });
+    if (existStore) {
       return res.status(400).json({
-        msg: "Restaurant already exist",
+        msg: "Store already exist",
       });
     }
-    const restaurantDetails = await Restaurant.create(req.body);
+
+    const storeData = { ...req.body };
+    if (req.file) {
+      storeData.image = req.file.path;
+    }
+
+    const storeDetails = await Store.create(storeData);
     res.status(201).json({
-      msg: "Restaurant details addded successfully",
-      restaurantDetails,
+      msg: "Store details addded successfully",
+      storeDetails,
     });
   } catch (err) {
     res.status(400).json({
-      err,
+      error: "Error adding store",
+      details: err.message || err,
     });
   }
 };
 
-const getRestaurants = async (req, res) => {
+const getStores = async (req, res) => {
   const { id } = req.query;
   let filter = {};
 
   if (id) filter._id = id;
   try {
-    const restaurantDetails = await Restaurant.find(filter);
-    console.log("restaurant details",restaurantDetails)
+    const storeDetails = await Store.find(filter);
+    console.log("store details", storeDetails)
     res.status(200).json({
-      msg: "Restaurant details fetched successfully",
-      data: restaurantDetails,
+      msg: "Store details fetched successfully",
+      data: storeDetails,
     });
   } catch (error) {
-    console.error("error during fetching Restaurants:", error);
+    console.error("error during fetching Stores:", error);
   }
 };
 
-const updateRestaurants = async (req, res) => {
+const updateStores = async (req, res) => {
   try {
     let id = req.params.id;
-    const updateRestaurant = await Restaurant.findByIdAndUpdate(id, req.body, {
+    const updateData = { ...req.body };
+    if (req.file) {
+      updateData.image = req.file.path;
+    }
+
+    const updateStore = await Store.findByIdAndUpdate(id, updateData, {
       new: true,
     });
     res.status(201).json({
-      msg: "Restaurant details updated successfully",
-      data: updateRestaurant,
+      msg: "Store details updated successfully",
+      data: updateStore,
     });
   } catch (err) {
-    res.status(400).json(err);
+    res.status(400).json({
+      error: "Error updating store",
+      details: err.message || err,
+    });
   }
 };
 
-const deleteRestaurants = async (req, res) => {
+const deleteStores = async (req, res) => {
   try {
     let id = req.params.id;
-    const deleteRestaurant = await Restaurant.findByIdAndDelete(id);
+    const deleteStore = await Store.findByIdAndDelete(id);
     res.status(201).json({
-      msg: "Restaurant details deleted successfully",
-      data: deleteRestaurant,
+      msg: "Store details deleted successfully",
+      data: deleteStore,
     });
   } catch (err) {
-    res.status(400).json(err);
+    res.status(400).json({
+      error: "Error deleting store",
+      details: err.message || err,
+    });
   }
 };
 
 const addFoodItems = async (req, res) => {
   try {
-    const foodDetails = await Product.create(req.body);
+    const foodData = { ...req.body };
+    if (req.file) {
+      foodData.image = req.file.path;
+    }
+    const foodDetails = await Product.create(foodData);
     res.status(201).json({
       msg: "Food item added successfully",
       data: foodDetails,
     });
   } catch (err) {
     res.status(400).json({
-      err,
+      error: "Error adding food item",
+      details: err.message || err,
     });
   }
 };
@@ -143,7 +167,10 @@ const getFoodItems = async (req, res) => {
   try {
     // 1. Get all food items
     // .lean() makes the query faster as it returns plain JS objects
-    const allFoods = await Product.find({}).populate("restaurantId", "restaurantsName").lean();
+    const allFoods = await Product.find({})
+      .populate("storeId", "storeName")
+      .populate("restaurantId", "restaurantsName")
+      .lean();
 
     // 2. Check if a user is logged in (from your 'protect' middleware)
     const userId = req.user?._id;
@@ -151,7 +178,7 @@ const getFoodItems = async (req, res) => {
     if (userId) {
       // 3. Get all of this user's likes in a single query
       const userLikes = await Likes.find({ userId }).select('foodId').lean();
-      
+
       // 4. Create a Set for fast lookup (O(1) complexity)
       const likedFoodIds = new Set(userLikes.map(like => like.foodId.toString()));
 
@@ -160,25 +187,46 @@ const getFoodItems = async (req, res) => {
         food.isLiked = likedFoodIds.has(food._id.toString());
       });
     } else {
-        // If no user is logged in, all items are not liked by default
-        allFoods.forEach(food => {
-            food.isLiked = false;
-        });
+      // If no user is logged in, all items are not liked by default
+      allFoods.forEach(food => {
+        food.isLiked = false;
+      });
     }
+
+    // Normalization and Aliasing
+    const normalizedFoods = allFoods.map(food => {
+      const normalized = {
+        ...food,
+        name: food.name || food.productName,
+        image: food.image || (food.images && food.images.length > 0 ? food.images[0] : null)
+      };
+
+      if (food.restaurantId && !food.storeId) {
+        normalized.storeId = {
+          ...food.restaurantId,
+          storeName: food.restaurantId.restaurantsName || food.restaurantId.storeName
+        };
+      }
+      return normalized;
+    });
 
     res.status(200).json({
       msg: "Food items fetched successfully",
-      data: allFoods,
+      data: normalizedFoods,
     });
   } catch (err) {
     console.error("Error fetching all food items:", err);
-    res.status(500).json({ msg: "Server error", error: err });
+    res.status(500).json({ msg: "Server error", error: err.message || err });
   }
 };
 const updateFoodItems = async (req, res) => {
   try {
     let id = req.params.id;
-    const updateFood = await Product.findByIdAndUpdate(id, req.body, {
+    const updateData = { ...req.body };
+    if (req.file) {
+      updateData.image = req.file.path;
+    }
+    const updateFood = await Product.findByIdAndUpdate(id, updateData, {
       new: true,
     });
     res.status(201).json({
@@ -186,7 +234,10 @@ const updateFoodItems = async (req, res) => {
       data: updateFood,
     });
   } catch (err) {
-    res.status(400).json(err);
+    res.status(400).json({
+      error: "Error updating food item",
+      details: err.message || err,
+    });
   }
 };
 
@@ -199,7 +250,10 @@ const deleteFoodItems = async (req, res) => {
       data: deleteFood,
     });
   } catch (err) {
-    res.status(400).json(err);
+    res.status(400).json({
+      error: "Error deleting food item",
+      details: err.message || err,
+    });
   }
 };
 
@@ -212,19 +266,45 @@ const getAllUserDetails = async (req, res) => {
     });
   }
   catch (err) {
-    res.status(400).json(err);
+    res.status(400).json({
+      error: "Error fetching user details",
+      details: err.message || err,
+    });
   }
 };
 
-const getRestaurantsDetails = async (req,res) =>{
-  try{
-    const resDetails = await Product.find().populate("restaurantId","restaurantsName address description image")
+const getStoresDetails = async (req, res) => {
+  try {
+    const resDetails = await Product.find()
+      .populate("storeId", "storeName address description image")
+      .populate("restaurantId", "restaurantsName address description image")
+      .lean();
+
+    const normalizedDetails = resDetails.map(item => {
+      const normalized = {
+        ...item,
+        name: item.name || item.productName,
+        image: item.image || (item.images && item.images.length > 0 ? item.images[0] : null)
+      };
+
+      if (item.restaurantId && !item.storeId) {
+        normalized.storeId = {
+          ...item.restaurantId,
+          storeName: item.restaurantId.restaurantsName || item.restaurantId.storeName
+        };
+      }
+      return normalized;
+    });
+
     res.status(200).json({
-      msg:"restaurant detailes fetched successfully",
-      data:resDetails
+      msg: "store detailes fetched successfully",
+      data: normalizedDetails
     })
-  } catch(err){
-    res.status(400).json(err)
+  } catch (err) {
+    res.status(400).json({
+      error: "Error fetching store details",
+      details: err.message || err,
+    });
   }
 }
 
@@ -233,14 +313,14 @@ const getRestaurantsDetails = async (req,res) =>{
 export {
   adminSignup,
   adminLogin,
-  addRestaurants,
-  getRestaurants,
-  updateRestaurants,
-  deleteRestaurants,
+  addStores,
+  getStores,
+  updateStores,
+  deleteStores,
   addFoodItems,
   getFoodItems,
   updateFoodItems,
   deleteFoodItems,
   getAllUserDetails,
-  getRestaurantsDetails
+  getStoresDetails
 };
